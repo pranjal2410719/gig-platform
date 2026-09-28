@@ -8,6 +8,7 @@ import {
   syncGithubProfile,
   getUserByGithubId,
   getUserByEmail,
+  getUserById,
   cleanGithubHandle,
 } from '@/lib/db-operations';
 
@@ -25,6 +26,8 @@ function getCookieMethods(cookieStore: Awaited<ReturnType<typeof cookies>>): Sup
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code');
   const oauthError = request.nextUrl.searchParams.get('error');
+  const mode = request.nextUrl.searchParams.get('mode') || 'login';
+  const roleHint = request.nextUrl.searchParams.get('role') || 'developer';
 
   let success = false;
   let finalRole = 'developer';
@@ -82,18 +85,41 @@ export async function GET(request: NextRequest) {
 
           const githubHandle = cleanGithubHandle(rawHandle);
 
-          // Resolve role: prefer an existing profile row (so an established business user who
-          // connects GitHub keeps their role). Any new OAuth user strictly defaults to 'developer'.
-          // Business roles require trusted onboarding/membership, not self-asserted OAuth metadata.
-          let role = 'developer';
-          const existingByGithub = githubId
-            ? await getUserByGithubId(githubId, dbClient)
-            : null;
-          const existingProfile =
-            existingByGithub ??
-            (user.email ? await getUserByEmail(user.email, dbClient) : null);
-          if (existingProfile?.role) {
-            role = existingProfile.role;
+          let role: string;
+
+          if (mode === 'link') {
+            // Linking mode: the user is already authenticated and we are
+            // attaching a GitHub identity to their existing account.
+            // Preserve the existing role — never override it here.
+            const existingProfile = await getUserById(user.id, dbClient);
+            if (existingProfile?.role) {
+              role = existingProfile.role;
+            } else {
+              role = roleHint;
+            }
+          } else {
+            // Login mode: respect the auth context (role hint) from the login path.
+            // Only fall back to email-based resolution when no explicit role hint
+            // was provided, so a developer who later links GitHub as business
+            // isn't silently downgraded to 'developer'.
+            role = roleHint;
+            const existingByGithub = githubId
+              ? await getUserByGithubId(githubId, dbClient, roleHint)
+              : null;
+            if (existingByGithub?.role) {
+              role = existingByGithub.role;
+            } else if (!roleHint || roleHint === 'developer') {
+              // No explicit business intent — fall back to email lookup so
+              // returning email/password users keep their profile.
+              const existingByEmail = user.email
+                ? await getUserByEmail(user.email, dbClient)
+                : null;
+              if (existingByEmail?.role) {
+                role = existingByEmail.role;
+              }
+            }
+            // If a business role hint was provided and no matching profile
+            // exists, a new business profile is created with role 'business'.
           }
           finalRole = role;
 

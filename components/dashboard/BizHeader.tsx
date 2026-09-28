@@ -119,7 +119,7 @@ export default function BizHeader({ displayName, displayEmail, activeTab, github
           </a>
         ) : (
           <a
-            href="/api/auth/github"
+            href="/api/auth/github?mode=link"
             style={{
               display: "inline-flex",
               alignItems: "center",

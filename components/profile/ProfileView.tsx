@@ -248,7 +248,7 @@ export default function ProfileView({
                   </a>
                 ) : (
                   <a
-                    href="/api/auth/github"
+                    href="/api/auth/github?mode=link"
                     style={{
                       display: "inline-flex",
                       alignItems: "center",

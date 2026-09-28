@@ -1026,7 +1026,7 @@ function TabContent({
                   </a>
                 ) : (
                   <a
-                    href="/api/auth/github"
+                     href="/api/auth/github?mode=link"
                     style={{
                       height: 40,
                       padding: "0 18px",

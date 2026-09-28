@@ -107,7 +107,7 @@ export default function DevHeader({ displayName, handle, activeTab, githubHandle
             </a>
           ) : (
             <a
-              href="/api/auth/github"
+              href="/api/auth/github?mode=link"
               style={{
                 height: 44,
                 padding: "0 20px",

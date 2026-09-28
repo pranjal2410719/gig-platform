@@ -978,14 +978,15 @@ export async function refundTaskEscrow(
 export async function getUserByGithubId(
   githubId: string,
   clientOverride?: SupabaseClient | null,
+  role?: string,
 ): Promise<UserProfile | null> {
   const client = clientOverride ?? db();
   if (!client) return null;
-  const { data, error } = await client
-    .from("users")
-    .select()
-    .eq("github_id", githubId)
-    .maybeSingle();
+  let query = client.from("users").select().eq("github_id", githubId);
+  if (role) {
+    query = query.eq("role", role);
+  }
+  const { data, error } = await query.maybeSingle();
   if (error) return null;
   return data;
 }
