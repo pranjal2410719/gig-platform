@@ -294,8 +294,8 @@ export default function GitHubImportModal({
                   Link GitHub to automatically list all your company and personal repositories.
                 </p>
               </div>
-               <a
-                 href="/api/auth/github?mode=link"
+<a
+                  href="/api/auth/github?mode=link&role=business"
                  style={{
                    padding: "6px 14px",
                    borderRadius: 6,

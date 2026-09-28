@@ -357,7 +357,6 @@ export async function getBusinessDashboard(): Promise<BusinessDashboard | null> 
       const userRes = await client.auth.getUser();
       const user = userRes.data?.user;
       if (user) {
-        githubHandle = cleanGithubHandle(user.user_metadata?.github_handle || user.user_metadata?.user_name);
         if (user.email) displayEmail = user.email;
 
         // Fetch user profile row
@@ -373,13 +372,15 @@ export async function getBusinessDashboard(): Promise<BusinessDashboard | null> 
           bio = userRow.bio || null;
           location = userRow.location || null;
           avatar_url = userRow.avatar_url || null;
+          // Always prefer database github_handle over user_metadata (which may be stale)
           const rowHandle = cleanGithubHandle(userRow.github_handle);
-          if (rowHandle) githubHandle = rowHandle;
+          githubHandle = rowHandle || null;
         }
 
-        // Only fetch tasks for this company's repositories; if no company, leave openTasks empty.
-        if (company) {
-          const repos = await getRepositories({ owner: company }, client);
+        // Only fetch tasks for this company's repositories; if no company but github_handle exists, use that.
+        const owner = company || githubHandle;
+        if (owner) {
+          const repos = await getRepositories({ owner }, client);
           const repoIds = repos.map((r) => r.id);
           if (repoIds.length > 0) {
             // Fetch tasks for each repo and flatten; use first repo as filter entry point
@@ -553,10 +554,12 @@ export async function getIssuePoolData(
 
     let repositoryIds: string[] | undefined;
     if (role === 'business') {
-      if (!company) {
+      // Use company as owner, fallback to github_handle or username if no company set
+      const owner = company || cleanGithubHandle(user?.github_handle) || cleanGithubHandle(user?.username);
+      if (!owner) {
         return buildEmptyIssuePool(role, userId, user?.username, company);
       }
-      const repos = await getRepositories({ owner: company }, client);
+      const repos = await getRepositories({ owner }, client);
       repositoryIds = repos.map((r) => r.id);
       if (repositoryIds.length === 0) {
         return buildEmptyIssuePool(role, userId, user?.username, company);

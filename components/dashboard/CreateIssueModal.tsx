@@ -390,8 +390,8 @@ export default function CreateIssueModal({
                       Link GitHub in profile settings so your organizations and issues appear automatically.
                     </p>
                   </div>
-                   <a
-                     href="/api/auth/github?mode=link"
+<a
+                      href={`/api/auth/github?mode=link&role=${userRole}`}
                      style={{
                        padding: "6px 14px",
                        borderRadius: 6,

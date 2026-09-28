@@ -36,6 +36,7 @@ GIG is a platform that breaks developers out of tutorial purgatory by connecting
 
 - **GitHub OAuth Authentication** — Sign in with GitHub, syncing profile data (bio, avatar, repos, followers)
 - **Dual-Role System** — Separate dashboards and workflows for developers and businesses
+- **Dual-Role GitHub Linking** — A single GitHub account can be linked to both a developer profile and a business profile; role resolution uses callback `mode` and `role` query hints
 - **Issue Pool** — Browse curated tasks across opted-in repositories, filtered by technology and difficulty tier
 - **Task Claiming** — Lock a task exclusively for 48 hours with single-claim enforcement
 - **PR Submission & Review** — Submit GitHub pull request URLs; businesses review and approve/reject
@@ -113,6 +114,7 @@ Edit `.env.local` with your credentials. See [`.env.example`](.env.example) for 
 -- 3. supabase/migrations/0002_rls_integrity.sql  (RLS lockdown + unique constraints)
 -- 4. supabase/migrations/0003_rls_privilege_lockdown.sql (privilege hardening)
 -- 5. supabase/migrations/0004_wallet_tx_nullable_task.sql (withdrawal support)
+-- 6. supabase/migrations/0013_dual_role_github.sql (dual-role GitHub linking: drops UNIQUE on github_id, adds indexes)
 ```
 
 Or push via the Supabase CLI:
@@ -169,7 +171,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the application.
 ├── public/                   # Static assets (logo)
 ├── supabase/
 │   ├── config.toml           # Supabase CLI config
-│   └── migrations/           # SQL migration files (5 migrations)
+│   └── migrations/           # SQL migration files (6 migrations)
 ├── tests/                    # Vitest test files
 ├── proxy.ts                  # Next.js 16 proxy (session refresh middleware)
 └── package.json
@@ -196,8 +198,8 @@ All tables have RLS enabled with policies scoped to `auth.uid()`. Privilege esca
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/auth/github` | Initiate GitHub OAuth flow |
-| `GET` | `/api/auth/github/callback` | Handle OAuth callback |
+| `GET` | `/api/auth/github` | Initiate GitHub OAuth flow (supports `mode=login|link` and `role=developer|business` query params) |
+| `GET` | `/api/auth/github/callback` | Handle OAuth callback; preserves existing session in link mode, resolves role from hint or existing profile |
 | `PATCH` | `/api/profile` | Update user profile |
 | `POST` | `/api/tasks` | Create a new task (business only) |
 | `GET` | `/api/wallet` | Get wallet balance & transactions |
@@ -217,6 +219,8 @@ The test suite covers:
 
 - **Session token security** — HMAC signing/verification, tamper detection, expiry, production secret enforcement, legacy session gating
 - **Withdrawal system** — Balance validation, insufficient funds, wallet not found, API endpoint auth/validation
+- **GitHub profile sync** — `cleanGithubHandle` validation, `syncGithubProfile` authenticated/public endpoints, `upsertUser` sanitization
+- **Dual-role GitHub linking** — `getUserByGithubId` with role filter, link mode role preservation, login mode role hint resolution, dual-role coexistence
 
 ## Scripts
 

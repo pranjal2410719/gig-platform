@@ -26,6 +26,7 @@ export async function GET(): Promise<NextResponse> {
     const company = user?.company ?? null;
     const rawGithubHandle = user?.github_handle || null;
     const cleanHandle = cleanGithubHandle(rawGithubHandle) || cleanGithubHandle(user?.username) || null;
+    // For business accounts, prefer company if set, otherwise use github_handle as owner
     const ownerName = company || cleanHandle || null;
 
     let userGithubRepos: Array<{ name: string; owner: string; url: string; description: string | null }> = [];

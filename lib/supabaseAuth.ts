@@ -7,6 +7,7 @@ export interface SessionPayload {
   role: 'developer' | 'business';
   name: string;
   githubId?: string;
+  githubHandle?: string;
   expiresAt: number;
 }
 
@@ -74,7 +75,7 @@ export async function getSession(): Promise<SessionPayload | null> {
   // R2a: If there is no public.users row, the user has not completed registration — return null.
   const { data: profile } = await supabase
     .from('users')
-    .select('role, github_id, username, company')
+    .select('role, github_id, github_handle, username, company')
     .eq('id', user.id)
     .single();
 
@@ -86,6 +87,7 @@ export async function getSession(): Promise<SessionPayload | null> {
     role: profile.role as 'developer' | 'business',
     name: profile.username || user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'User',
     githubId: profile.github_id || user.user_metadata?.github_id,
+    githubHandle: profile.github_handle || user.user_metadata?.github_handle,
     expiresAt,
   };
 }
