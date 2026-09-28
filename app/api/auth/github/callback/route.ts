@@ -46,10 +46,17 @@ export async function GET(request: NextRequest) {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
       if (!error && data.session) {
-        const session = data.session;
+        const githubSession = data.session;
 
-        // Persist the Supabase session in SSR cookies.
-        await createSupabaseSession(session);
+        // In link mode, we want to keep the existing session and just link GitHub to it
+        // In login mode, we need to establish the new user's session
+        const isLinkMode = mode === 'link';
+        
+        if (!isLinkMode) {
+          // Persist the Supabase session in SSR cookies for login mode
+          await createSupabaseSession(githubSession);
+        }
+        // For link mode, we keep the existing session and use githubSession temporarily
 
         // DB writes below run as the service role: the `authenticated` role
         // cannot write `role`/`github_id`/`email`/`company` (migrations
@@ -142,7 +149,7 @@ export async function GET(request: NextRequest) {
             // Fetch authoritative GitHub profile data (avatar URL, bio, stats) and store it locally
             await syncGithubProfile(
               user.id,
-              session.provider_token,
+              githubSession.provider_token,
               githubId,
               githubHandle,
               dbClient,
