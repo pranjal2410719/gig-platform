@@ -1507,6 +1507,43 @@ export async function setClaimStatus(
   return !error;
 }
 
+export interface ExpireStaleClaimsResult {
+  ok: boolean;
+  expiredClaimsCount?: number;
+  error?: string;
+}
+
+export async function expireStaleClaims(
+  clientOverride?: SupabaseClient | null
+): Promise<ExpireStaleClaimsResult> {
+  const client = clientOverride ?? supabaseAdmin;
+  if (!client) {
+    return {
+      ok: false,
+      error: "Service role database client unavailable",
+    };
+  }
+
+  const { data, error } = await client.rpc("atomic_expire_stale_claims");
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  if (data && (data.success || data.ok)) {
+    return {
+      ok: true,
+      expiredClaimsCount: data.expired_claims_count ?? 0,
+    };
+  }
+
+  return {
+    ok: false,
+    error: data?.error || "Failed to execute atomic claim expiration",
+  };
+}
+
+
 export async function getWalletByUser(
   userId: string,
   clientOverride?: SupabaseClient | null,
