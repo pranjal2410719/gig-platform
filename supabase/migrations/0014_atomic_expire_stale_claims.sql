@@ -74,9 +74,9 @@ DECLARE
   v_expired_count integer := 0;
   v_role text;
 BEGIN
-  -- Administrative Boundary: strictly service_role only
+  -- Administrative Boundary: strictly service_role or database internal pg_cron only
   v_role := COALESCE(auth.role(), '');
-  IF v_role <> 'service_role' THEN
+  IF v_role <> 'service_role' AND current_user NOT IN ('postgres', 'supabase_admin') THEN
     RAISE EXCEPTION 'Forbidden: administrative operation requires service_role'
       USING ERRCODE = 'insufficient_privilege';
   END IF;

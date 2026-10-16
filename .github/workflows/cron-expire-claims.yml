@@ -1,0 +1,35 @@
+name: Scheduled Claim Expiration Sweep
+
+on:
+  schedule:
+    # Run every 15 minutes across all deploy environments (Netlify & Vercel)
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    name: Claim Expiration Sweep
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Expiration Route Handler
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DEPLOY_URL: ${{ secrets.DEPLOY_URL || 'https://gig-platform.netlify.app' }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::notice ::CRON_SECRET is not configured in repository secrets; skipping sweep."
+            exit 0
+          fi
+          echo "Invoking expiration sweep at ${DEPLOY_URL}/api/cron/expire-claims..."
+          HTTP_STATUS=$(curl -s -o /tmp/cron_response.json -w "%{http_code}" -X POST "${DEPLOY_URL}/api/cron/expire-claims" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json")
+          cat /tmp/cron_response.json
+          echo ""
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "::error ::Sweep failed with HTTP status ${HTTP_STATUS}"
+            exit 1
+          fi
