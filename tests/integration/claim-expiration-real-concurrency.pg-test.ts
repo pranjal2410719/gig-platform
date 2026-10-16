@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+// @ts-ignore
 import { Client } from "pg";
 
 /**

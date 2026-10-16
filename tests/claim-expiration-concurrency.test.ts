@@ -122,11 +122,7 @@ describe("Phase A Client Concurrency Flow: App Action & DB Operation Verificatio
     expect(sweepResult.ok).toBe(true);
     expect(sweepResult.expiredClaimsCount).toBe(1);
 
-    mockQueryBuilder.maybeSingle.mockResolvedValueOnce({
-      data: null,
-      error: null,
-    });
-
+    // submitPrAction calls: 1. getTaskById, 2. getRepositoryById, 3. getActiveClaimForUserAndTask
     mockQueryBuilder.maybeSingle
       .mockResolvedValueOnce({
         data: { id: "task-100", repository_id: "repo-100", title: "Test Task" },
@@ -134,6 +130,10 @@ describe("Phase A Client Concurrency Flow: App Action & DB Operation Verificatio
       })
       .mockResolvedValueOnce({
         data: { id: "repo-100", owner: "org", name: "repo" },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: null, // Claim expired: no active claim returned
         error: null,
       });
 
@@ -148,6 +148,7 @@ describe("Phase A Client Concurrency Flow: App Action & DB Operation Verificatio
   });
 
   it("Scenario 3: submitPR handles database trigger rejection with check_violation cleanly", async () => {
+    mockQueryBuilder.maybeSingle.mockReset();
     mockQueryBuilder.maybeSingle.mockResolvedValueOnce({
       data: null,
       error: {
