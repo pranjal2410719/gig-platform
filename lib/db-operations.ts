@@ -1543,6 +1543,157 @@ export async function expireStaleClaims(
   };
 }
 
+export interface AtomicClaimWebhookDeliveryResult {
+  can_process: boolean;
+  status: "claimed" | "already_completed" | "already_ignored" | "retrying" | "stale_recovered" | "in_progress" | string;
+  delivery_id?: string;
+  processing_token?: string;
+  error?: string;
+}
+
+export async function atomicClaimWebhookDelivery(
+  input: {
+    deliveryId: string;
+    eventType: string;
+    repositoryId?: string | null;
+    prNumber?: number | null;
+  },
+  clientOverride?: SupabaseClient | null
+): Promise<AtomicClaimWebhookDeliveryResult> {
+  const client = clientOverride ?? supabaseAdmin;
+  if (!client) {
+    return { can_process: false, status: "error", error: "Database client unavailable" };
+  }
+
+  const { data, error } = await client.rpc("atomic_claim_webhook_delivery", {
+    p_delivery_id: input.deliveryId,
+    p_event_type: input.eventType,
+    p_repository_id: input.repositoryId ?? null,
+    p_pr_number: input.prNumber ?? null,
+  });
+
+  if (error) {
+    return { can_process: false, status: "error", error: error.message };
+  }
+
+  return (
+    data ?? {
+      can_process: false,
+      status: "error",
+      error: "No response from atomic_claim_webhook_delivery",
+    }
+  );
+}
+
+export async function atomicCompleteWebhookDelivery(
+  input: {
+    deliveryId: string;
+    processingToken: string;
+    status: "completed" | "failed" | "ignored";
+    errorMessage?: string | null;
+    payloadSummary?: Record<string, unknown> | null;
+  },
+  clientOverride?: SupabaseClient | null
+): Promise<boolean> {
+  const client = clientOverride ?? supabaseAdmin;
+  if (!client) return false;
+
+  const { data, error } = await client.rpc("atomic_complete_webhook_delivery", {
+    p_delivery_id: input.deliveryId,
+    p_processing_token: input.processingToken,
+    p_status: input.status,
+    p_error_message: input.errorMessage ?? null,
+    p_payload_summary: input.payloadSummary ?? null,
+  });
+
+  return !error && data === true;
+}
+
+export interface AtomicProcessPrMergeInput {
+  submissionId: string;
+  reviewer?: string | null;
+  mergedAt?: string | null;
+  githubRepoId?: string | null;
+  githubIssueNumber?: number | null;
+  prNumber?: number | null;
+  prAuthorGithubId?: string | null;
+  mergeCommitSha?: string | null;
+}
+
+export interface AtomicProcessPrMergeResult {
+  success: boolean;
+  idempotent?: boolean;
+  submission_id?: string;
+  contribution_id?: string;
+  transaction_id?: string;
+  reward_amount?: number;
+  message?: string;
+  error?: string;
+}
+
+export async function atomicProcessPrMerge(
+  input: AtomicProcessPrMergeInput,
+  clientOverride?: SupabaseClient | null
+): Promise<AtomicProcessPrMergeResult> {
+  const client = clientOverride ?? supabaseAdmin;
+  if (!client) {
+    return { success: false, error: "Database client unavailable" };
+  }
+
+  const { data, error } = await client.rpc("atomic_process_pr_merge", {
+    p_submission_id: input.submissionId,
+    p_reviewer: input.reviewer ?? null,
+    p_merged_at: input.mergedAt ?? null,
+    p_github_repo_id: input.githubRepoId ?? null,
+    p_github_issue_number: input.githubIssueNumber ?? null,
+    p_pr_number: input.prNumber ?? null,
+    p_pr_author_github_id: input.prAuthorGithubId ?? null,
+    p_merge_commit_sha: input.mergeCommitSha ?? null,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return data ?? { success: false, error: "No response from atomic_process_pr_merge" };
+}
+
+export interface AtomicProcessPrClosureResult {
+  success: boolean;
+  idempotent?: boolean;
+  submission_id?: string;
+  claim_id?: string;
+  submission_status?: string;
+  claim_status?: string;
+  message?: string;
+  error?: string;
+}
+
+export async function atomicProcessPrClosure(
+  input: {
+    submissionId: string;
+    claimId: string;
+  },
+  clientOverride?: SupabaseClient | null
+): Promise<AtomicProcessPrClosureResult> {
+  const client = clientOverride ?? supabaseAdmin;
+  if (!client) {
+    return { success: false, error: "Database client unavailable" };
+  }
+
+  const { data, error } = await client.rpc("atomic_process_pr_closure", {
+    p_submission_id: input.submissionId,
+    p_claim_id: input.claimId,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return data ?? { success: false, error: "No response from atomic_process_pr_closure" };
+}
+
+
 
 export async function getWalletByUser(
   userId: string,
